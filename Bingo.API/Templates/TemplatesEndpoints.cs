@@ -1,6 +1,7 @@
 ﻿using System.Net;
 using Bingo.API.Templates.Requests;
 using Bingo.API.Templates.Responses;
+using FluentValidation;
 using Microsoft.AspNetCore.Http.HttpResults;
 
 namespace Bingo.API.Templates;
@@ -32,14 +33,20 @@ public static class TemplatesEndpoints
         return TypedResults.Ok(response);
     }
     
-    private static async Task<Results<Ok<TemplateResponse>, ValidationProblem>> HandlePostNewTemplate(
+    private static async Task<Results<Created<TemplateResponse>, ValidationProblem>> HandlePostNewTemplate(
         CreateTemplateRequest request, 
+        IValidator<CreateTemplateRequest> validator,
         CancellationToken ct)
     {
+        var validationResult = await validator.ValidateAsync(request, ct);
+        if (!validationResult.IsValid)
+        {
+            return TypedResults.ValidationProblem(validationResult.ToDictionary());
+        }
+        await Task.Delay(500, ct);
         var response = new TemplateResponse(
             request.Name,
             request.Options);
-        await Task.Delay(500, ct);
-        return TypedResults.Ok(response);
+        return TypedResults.Created($"/templates/{response.Name}", response);
     } 
 }
